@@ -447,14 +447,28 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                         Navigator.pop(context2);
                         try {
                           final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
-                          if (response.statusCode == 200 && mounted) {
-                            // Chuta o usuário para a tela de login
-                            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conta excluída para sempre.'), backgroundColor: Colors.black));
+                          if (response.statusCode == 200) {
+                          // Resolve o aviso azul do Flutter: verifica se a tela ainda está ativa
+                            if (!mounted) return;
+                            // (Opcional) Se usa SharedPreferences para manter o utilizador logado, descomente as 2 linhas abaixo:
+                            // final prefs = await SharedPreferences.getInstance();
+                            // await prefs.clear();
+                            // 1º PASSO: Mostrar a mensagem de sucesso enquanto ainda estamos nesta tela
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                              content: Text('Conta excluída para sempre.'), 
+                              backgroundColor: Colors.black,
+                              ),
+                          );
+
+                            // 2º PASSO: Agora sim, redireciona para o Login e destrói o histórico
+                            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                            (route) => false,
+                            );
                           }
-                        } catch (e) {
-                          debugPrint('Erro: $e');
-                        }
+                          } catch (e) {
+                            debugPrint('Erro: $e');
+                          }
                       },
                       child: const Text('APAGAR TUDO'),
                     ),

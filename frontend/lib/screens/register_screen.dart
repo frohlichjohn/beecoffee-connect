@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart'; // Pacote correto para GPS
 
 class RegisterScreen extends StatefulWidget {
-  final String initialRole; // Recebe o tipo de perfil escolhido na tela anterior
+  final String initialRole;
 
   const RegisterScreen({super.key, required this.initialRole});
 
@@ -12,30 +13,26 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Controladores para capturar o texto digitado pelo usuário nos campos de texto
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   
-  late String _selectedRole; // Declarado como late para ser iniciado no initState
+  late String _selectedRole;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Inicia o dropdown com o valor enviado pelo botão correspondente na tela anterior
     _selectedRole = widget.initialRole; 
   }
 
-  // Função responsável por enviar os dados de cadastro para a API Node.js
   Future<void> _cadastrarUsuario() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final location = _locationController.text.trim(); 
 
-    // Validação básica para garantir que nenhum campo ficou vazio
     if (name.isEmpty || email.isEmpty || password.isEmpty || location.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos, incluindo a localização!')),
@@ -46,6 +43,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() { _isLoading = true; });
 
     try {
+      // --- CAPTURA DE COORDENADAS VIA GPS ---
+      double? latitudeCalculada;
+      double? longitudeCalculada;
+
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          latitudeCalculada = position.latitude;
+          longitudeCalculada = position.longitude;
+        }
+      } catch (e) {
+        debugPrint("Erro ao capturar a localização do GPS: $e");
+      }
+      // --- FIM DA CAPTURA ---
+
       final response = await http.post(
         Uri.parse('https://beecoffee-connect.onrender.com/api/register'),
         headers: {'Content-Type': 'application/json'},
@@ -54,7 +72,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'email': email,
           'password': password,
           'role': _selectedRole,
-          'location': location, // Envia a cidade e estado para o PostgreSQL
+          'location': location,
+          'city': location,                  
+          'latitude': latitudeCalculada,     
+          'longitude': longitudeCalculada    
         }),
       );
 
@@ -65,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cadastro realizado com sucesso! Faça login.')),
         );
-        Navigator.pop(context); // Retorna para a tela de login
+        Navigator.pop(context); 
       } else {
         final data = jsonDecode(response.body);
         if (!mounted) return;
@@ -89,7 +110,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('Cadastro - BeeCoffee Connect'),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
-        // CORREÇÃO: Força o texto "Voltar" em português ao passar o mouse ou segurar o botão de retorno
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Voltar',
@@ -104,8 +124,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               const Icon(Icons.person_add, size: 70, color: Colors.green),
               const SizedBox(height: 24),
-              
-              // Campo para Nome Completo ou Nome da Fazenda/Apiário
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -115,8 +133,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Campo para o E-mail de acesso
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
@@ -127,8 +143,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-              
-              // Campo para a Senha
               TextField(
                 controller: _passwordController,
                 decoration: InputDecoration(
@@ -139,8 +153,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: true,
               ),
               const SizedBox(height: 16),
-
-              // Campo de Localização genérico (Ex: Cidade / Estado)
               TextField(
                 controller: _locationController,
                 decoration: InputDecoration(
@@ -150,8 +162,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Dropdown para Seleção de Perfil
               DropdownButtonFormField<String>(
                 initialValue: _selectedRole,
                 decoration: InputDecoration(
@@ -170,8 +180,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              
-              // Botão Principal de Cadastro
               SizedBox(
                 width: double.infinity,
                 height: 50,
