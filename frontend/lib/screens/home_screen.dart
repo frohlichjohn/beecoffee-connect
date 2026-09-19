@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _buscarContratos() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/contracts/cafeicultor/${widget.userId}'));
+      final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/cafeicultor/${widget.userId}'));
       if (response.statusCode == 200) {
         setState(() {
           _contracts = jsonDecode(response.body);
@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _buscarApicultoresMapa() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/beekeepers'));
+      final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/beekeepers'));
       if (response.statusCode == 200) {
         setState(() {
           _apicultoresMapa = jsonDecode(response.body);
@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _atualizarStatusContrato(String contratoId, String novoStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('http://localhost:3000/api/contracts/$contratoId/status'),
+        Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/$contratoId/status'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'status': novoStatus}),
       );
@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   Future<void> _excluirContrato(String contratoId) async {
     try {
-      final response = await http.delete(Uri.parse('http://localhost:3000/api/contracts/$contratoId'));
+      final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/$contratoId'));
       if (response.statusCode == 200) {
         _buscarContratos(); // Recarrega a lista após excluir
       } else {
@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 try {
                   final response = await http.put(
-                    Uri.parse('http://localhost:3000/api/users/${widget.userId}/password'),
+                    Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}/password'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({'nova_senha': senhaController.text}),
                   );
@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () async {
                         Navigator.pop(context2);
                         try {
-                          final response = await http.delete(Uri.parse('http://localhost:3000/api/users/${widget.userId}'));
+                          final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
                           if (response.statusCode == 200 && mounted) {
                             // Chuta o usuário para a tela de login
                             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);

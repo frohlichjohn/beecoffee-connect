@@ -1,18 +1,11 @@
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
+  // Tenta usar o banco da nuvem primeiro, se não achar, usa o local
+  connectionString: process.env.DATABASE_URL || 'postgresql://SEU_USER_LOCAL:SUA_SENHA_LOCAL@localhost:5432/SEU_BANCO_LOCAL',
+  
+  // A configuração SSL é obrigatória para conectar no banco da nuvem (Neon)
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-pool.on('connect', () => {
-    console.log('🔌 Conectado ao banco de dados PostgreSQL com sucesso!');
-});
-
-module.exports = {
-    query: (text, params) => pool.query(text, params),
-};
+module.exports = pool;

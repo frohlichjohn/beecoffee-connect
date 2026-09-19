@@ -36,7 +36,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
 
   Future<void> _buscarConfiguracoes() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/users/${widget.userId}/config'));
+      final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}/config'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
@@ -52,7 +52,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   Future<void> _atualizarConfiguracoes(int novoTotal, double novoPreco) async {
     try {
       final response = await http.put(
-        Uri.parse('http://localhost:3000/api/users/${widget.userId}/config'),
+        Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}/config'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'total_colmeias': novoTotal, 'preco_por_colmeia': novoPreco}),
       );
@@ -304,7 +304,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
 
   Future<void> _buscarPropostas() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/contracts/apicultor/todos/${widget.userId}'));
+      final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/apicultor/todos/${widget.userId}'));
       if (response.statusCode == 200) {
         setState(() {
           _propostas = jsonDecode(response.body);
@@ -321,7 +321,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   Future<void> _responderProposta(String contratoId, String novoStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('http://localhost:3000/api/contracts/$contratoId/status'),
+        Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/$contratoId/status'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'status': novoStatus}),
       );
@@ -346,7 +346,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
 
   Future<void> _excluirContrato(String contratoId) async {
     try {
-      final response = await http.delete(Uri.parse('http://localhost:3000/api/contracts/$contratoId'));
+      final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/$contratoId'));
       if (response.statusCode == 200) _buscarPropostas(); 
     } catch (e) {}
   }
@@ -397,7 +397,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                 
                 try {
                   final response = await http.put(
-                    Uri.parse('http://localhost:3000/api/users/${widget.userId}/password'),
+                    Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}/password'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({'nova_senha': senhaController.text}),
                   );
@@ -446,7 +446,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                       onPressed: () async {
                         Navigator.pop(context2);
                         try {
-                          final response = await http.delete(Uri.parse('http://localhost:3000/api/users/${widget.userId}'));
+                          final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
                           if (response.statusCode == 200 && mounted) {
                             // Chuta o usuário para a tela de login
                             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);

@@ -28,7 +28,7 @@ class _SearchBeekeepersScreenState extends State<SearchBeekeepersScreen> {
 
   Future<void> _buscarApicultores() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/beekeepers'));
+      final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/beekeepers'));
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
 
@@ -131,7 +131,7 @@ class _SearchBeekeepersScreenState extends State<SearchBeekeepersScreen> {
                     try {
                       // Dispara a requisição enviando a quantidade exata do Slider e o valor calculado!
                       final response = await http.post(
-                        Uri.parse('http://localhost:3000/api/contracts'),
+                        Uri.parse('https://beecoffee-connect.onrender.com/api/contracts'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({
                           'cafeicultor_id': widget.cafeicultorId,

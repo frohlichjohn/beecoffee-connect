@@ -47,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/register'),
+        Uri.parse('https://beecoffee-connect.onrender.com/api/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'full_name': name,
