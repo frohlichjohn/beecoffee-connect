@@ -72,7 +72,7 @@ app.post('/api/login', async (req, res) => {
 // ==========================================
 app.post('/api/register', async (req, res) => {
     // Agora recebemos a 'location' que o usuário vai digitar na tela de cadastro
-    const { full_name, email, password, role, location } = req.body;
+    const { full_name, email, password, role, location, city, latitude, longitude } = req.body;
 
     try {
         // Primeiro, garantimos que não haja e-mails duplicados
@@ -83,11 +83,11 @@ app.post('/api/register', async (req, res) => {
 
         // Insere o novo usuário, mapeando as 5 variáveis para os 5 campos do banco ($1 a $5)
         const insertQuery = `
-            INSERT INTO users (full_name, email, password_hash, role, location)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, full_name, email, role, location;
+             INSERT INTO users (full_name, email, password_hash, role, location, city, latitude, longitude)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, full_name, email, role, location, city, latitude, longitude;
         `;
-        const newUser = await db.query(insertQuery, [full_name, email, password, role.toUpperCase(), location]);
+        const newUser = await db.query(insertQuery, [full_name, email, password, role.toUpperCase(), location, city, latitude, longitude    ]);
 
         res.status(201).json({
             message: 'Usuário cadastrado com sucesso!',
