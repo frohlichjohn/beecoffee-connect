@@ -396,7 +396,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   }
 
   void _excluirConta() {
-    // 1ª Confirmação
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -409,7 +408,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
             onPressed: () {
               Navigator.pop(context); // Fecha o primeiro pop-up
               
-              // 2ª Confirmação Absoluta
               showDialog(
                 context: context,
                 builder: (context2) => AlertDialog(
@@ -422,20 +420,16 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                       onPressed: () async {
                         Navigator.pop(context2); // Fecha o segundo pop-up
                         
-                        // O SEGREDO ESTÁ AQUI: Salvar o contexto antes da chamada assíncrona
+                        // Guarda as referências de contexto de forma segura
                         final navegador = Navigator.of(context);
                         final mensageiro = ScaffoldMessenger.of(context);
 
                         try {
                           final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
                           
-                          // Aceita tanto 200 (OK) quanto 204 (No Content)
+                          // Verifica se a API apagou com sucesso (200 ou 204)
                           if (response.statusCode == 200 || response.statusCode == 204) {
                             
-                            // 1. MATA A MEMÓRIA DO LOGIN NO CELULAR (Remove o Login Fantasma)
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.clear();
-                            // Mostra a mensagem usando a variável salva
                             mensageiro.showSnackBar(
                               const SnackBar(
                                 content: Text('Conta excluída para sempre.'), 
@@ -443,16 +437,16 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                               ),
                             );
 
-                            // Navega para o Login destruindo a árvore de telas
+                            // Força o retorno imediato para a tela de login do main.dart
                             navegador.pushAndRemoveUntil(
                               MaterialPageRoute(builder: (context) => const LoginScreen()), 
                               (route) => false,
                             );
                           } else {
-                            debugPrint('Falha ao excluir. Status: ${response.statusCode}');
+                            debugPrint('Falha ao apagar. Código: ${response.statusCode}');
                           }
                         } catch (e) {
-                          debugPrint('Erro: $e');
+                          debugPrint('Erro de conexão: $e');
                         }
                       },
                       child: const Text('APAGAR TUDO'),
