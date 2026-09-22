@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../main.dart'; 
+import '../main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BeekeeperHomeScreen extends StatefulWidget {
   final String userId; 
@@ -431,6 +432,9 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                           // Aceita tanto 200 (OK) quanto 204 (No Content)
                           if (response.statusCode == 200 || response.statusCode == 204) {
                             
+                            // 1. MATA A MEMÓRIA DO LOGIN NO CELULAR (Remove o Login Fantasma)
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
                             // Mostra a mensagem usando a variável salva
                             mensageiro.showSnackBar(
                               const SnackBar(

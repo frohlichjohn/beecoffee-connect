@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../main.dart'; 
 import 'search_beekeepers_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -254,6 +255,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           // Aceita tanto 200 (OK) quanto 204 (No Content)
                           if (response.statusCode == 200 || response.statusCode == 204) {
                             
+                            // 1. MATA A MEMÓRIA DO LOGIN NO CELULAR (Remove o Login Fantasma)
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
                             // Mostra a mensagem usando a variável salva
                             mensageiro.showSnackBar(
                               const SnackBar(
