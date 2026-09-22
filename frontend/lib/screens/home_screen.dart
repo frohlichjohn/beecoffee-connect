@@ -22,8 +22,7 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-// NOVO: Controladores da Calculadora de ROI
-  
+
 class _HomeScreenState extends State<HomeScreen> {
 
   final TextEditingController _producaoController = TextEditingController(text: '500'); 
@@ -45,6 +44,17 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _buscarContratos();
     _buscarApicultoresMapa(); 
+  }
+
+  // ========================================================
+  // FUNÇÃO MESTRE PARA O PULL-TO-REFRESH
+  // ========================================================
+  Future<void> _atualizarTelaInteira() async {
+    // Busca novamente os contratos e os apicultores no mapa
+    await _buscarContratos();
+    await _buscarApicultoresMapa();
+    // Força o redesenho final
+    setState(() {});
   }
 
   Future<void> _buscarContratos() async {
@@ -86,9 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       
       if (response.statusCode == 200) {
-        _buscarContratos(); // Atualiza a tela se der sucesso
+        _buscarContratos(); 
       } else {
-        // NOVO: Alerta visual se o banco de dados bloquear a ação!
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -102,11 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('Erro de conexão: $e');
     }
   }
+
   Future<void> _excluirContrato(String contratoId) async {
     try {
       final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/contracts/$contratoId'));
       if (response.statusCode == 200) {
-        _buscarContratos(); // Recarrega a lista após excluir
+        _buscarContratos(); 
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -119,9 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ========================================================
-  // NOVO: Função para exibir o Pop-up de Dupla Confirmação
-  // ========================================================
   void _confirmarAcao(String titulo, String mensagem, VoidCallback onConfirm) {
     showDialog(
       context: context,
@@ -131,13 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // Apenas fecha e não faz nada
+            onPressed: () => Navigator.pop(context), 
             child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Fecha o pop-up
-              onConfirm();            // Executa a função do banco de dados
+              Navigator.pop(context); 
+              onConfirm();            
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], foregroundColor: Colors.white),
             child: const Text('Confirmar'),
@@ -147,9 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ========================================================
-  // JANELA: Alterar Senha
-  // ========================================================
   void _mostrarDialogAlterarSenha() {
     TextEditingController senhaController = TextEditingController();
     TextEditingController confirmaSenhaController = TextEditingController();
@@ -164,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               TextField(
                 controller: senhaController,
-                obscureText: true, // Esconde a senha com asteriscos
+                obscureText: true, 
                 decoration: const InputDecoration(labelText: 'Nova Senha', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
               ),
               const SizedBox(height: 16),
@@ -189,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return;
                 }
 
-                Navigator.pop(context); // Fecha o pop-up
+                Navigator.pop(context); 
                 
                 try {
                   final response = await http.put(
@@ -212,11 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ========================================================
-  // JANELA: Apagar Conta (Com Dupla Confirmação)
-  // ========================================================
   void _excluirConta() {
-    // 1ª Confirmação
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -227,9 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(context); // Fecha o primeiro
+              Navigator.pop(context); 
               
-              // 2ª Confirmação Absoluta
               showDialog(
                 context: context,
                 builder: (context2) => AlertDialog(
@@ -244,12 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         try {
                           final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
                           if (response.statusCode == 200) {
-                          // Resolve o aviso azul do Flutter: verifica se a tela ainda está ativa
                             if (!mounted) return;
-                            // (Opcional) Se usa SharedPreferences para manter o utilizador logado, descomente as 2 linhas abaixo:
-                            // final prefs = await SharedPreferences.getInstance();
-                            // await prefs.clear();
-                            // 1º PASSO: Mostrar a mensagem de sucesso enquanto ainda estamos nesta tela
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                               content: Text('Conta excluída para sempre.'), 
@@ -257,7 +251,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                           );
 
-                            // 2º PASSO: Agora sim, redireciona para o Login e destrói o histórico
                             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), 
                             (route) => false,
                             );
@@ -265,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           } catch (e) {
                             debugPrint('Erro: $e');
                           }
-                       },
+                      },
                       child: const Text('APAGAR TUDO'),
                     ),
                   ],
@@ -287,12 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('BeeCoffee Connect'),
         backgroundColor: Colors.green[700],
         foregroundColor: Colors.white,
-        // agora o usuário sai pelo menu lateral!
       ),
-      
-      // ==========================================
-      // NOVO: MENU LATERAL (DRAWER) INSERIDO AQUI!
-      // ==========================================
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -309,51 +297,50 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            
             ListTile(
               leading: const Icon(Icons.lock_reset, color: Colors.grey),
               title: const Text('Alterar Senha'),
               onTap: () {
-                Navigator.pop(context); // Fecha a gaveta
-                _mostrarDialogAlterarSenha(); // Abre a janelinha nova
+                Navigator.pop(context); 
+                _mostrarDialogAlterarSenha(); 
               },
             ),
-            
             ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
               title: const Text('Apagar Conta', style: TextStyle(color: Colors.redAccent)),
               onTap: () {
-                Navigator.pop(context); // Fecha a gaveta
-                _excluirConta(); // Abre a dupla confirmação
+                Navigator.pop(context); 
+                _excluirConta(); 
               },
             ),
-            
             const Divider(), 
-            
             ListTile(
               leading: const Icon(Icons.exit_to_app, color: Colors.grey),
               title: const Text('Sair do Aplicativo'),
               onTap: () {
-                // A mesma lógica de logout que você já usava!
                 Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
               },
             ),
           ],
         ),
       ),
-      // ==========================================
-      // Fim do Menu Lateral
-      // ==========================================
 
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/fundo.jpg'), // Coloque o nome exato da sua imagem aqui
-            fit: BoxFit.cover, // Estica a imagem para cobrir a tela toda
-            opacity: 0.15, // DICA DE OURO: Deixa a imagem quase transparente (15%) para não atrapalhar a leitura!
+      // ========================================================
+      // O RefreshIndicator envolve o corpo e chama a função mestre
+      // ========================================================
+      body: RefreshIndicator(
+        onRefresh: _atualizarTelaInteira,
+        color: Colors.green[700],
+        child: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/fundo.jpg'), 
+              fit: BoxFit.cover, 
+              opacity: 0.15, 
+            ),
           ),
+          child: _buildBody(), 
         ),
-        child: _buildBody(), 
       ),
 
       bottomNavigationBar: BottomNavigationBar(
@@ -376,15 +363,12 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (_selectedIndex) {
       case 0: return _buildHomeContent();
       case 1: return _buildMapContent(); 
-      case 2: return _buildRoiContent(); // AGORA CHAMA A ABA ROI
+      case 2: return _buildRoiContent(); 
       case 3: return _buildHistoryContent();
       default: return _buildHomeContent();
     }
   }
 
-  // ========================================================
-  // NOVA ABA 3: CALCULADORA DE ROI (COM NÚMEROS BRASILEIROS)
-  // ========================================================
   Widget _buildRoiContent() {
     final contratosValidos = _contracts.where((c) => 
         c['status'] == 'ACEITO' || 
@@ -394,7 +378,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     double investimentoTotal = contratosValidos.fold(0.0, (soma, item) => soma + (double.tryParse(item['valor_total']?.toString() ?? '0') ?? 0.0));
 
-    // 1. Proteção: Troca os pontos e vírgulas para a matemática não quebrar
     String prodTexto = _producaoController.text.replaceAll('.', '').replaceAll(',', '.');
     String precoTexto = _precoSacaController.text.replaceAll('.', '').replaceAll(',', '.');
 
@@ -406,103 +389,106 @@ class _HomeScreenState extends State<HomeScreen> {
     double lucroLiquido = receitaExtraBruta - investimentoTotal;
     double roiPercentual = investimentoTotal > 0 ? (lucroLiquido / investimentoTotal) * 100 : 0.0;
 
-    // 2. FORMATADORES BRASILEIROS (Mágica do pacote INTL)
     final formatterMoeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final formatterPct = NumberFormat.decimalPattern('pt_BR');
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.trending_up, color: Colors.green[700], size: 28),
-              const SizedBox(width: 8),
-              const Text('SIMULADOR DE ROI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Estudos da Embrapa indicam que a polinização por abelhas pode aumentar a produtividade do café arábica em até 20%. Simule o impacto financeiro na sua safra:', 
-            style: TextStyle(color: Colors.grey, fontSize: 14)
-          ),
-          const SizedBox(height: 24),
-          
-          Card(
-            color: Colors.white,
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Sua estimativa de produção (Sacas):', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _producaoController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (val) => setState(() {}), 
-                    decoration: const InputDecoration(border: OutlineInputBorder(), prefixIcon: Icon(Icons.shopping_bag)),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Preço atual da Saca de Café:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _precoSacaController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (val) => setState(() {}), 
-                    // Removido o 'R$' solto daqui, pois o usuário já digita direto
-                    decoration: const InputDecoration(border: OutlineInputBorder(), prefixText: 'R\$ '),
-                  ),
-                ],
+      physics: const AlwaysScrollableScrollPhysics(), // OBRIGATÓRIO PARA O PULL-TO-REFRESH FUNCIONAR
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.trending_up, color: Colors.green[700], size: 28),
+                const SizedBox(width: 8),
+                const Text('SIMULADOR DE ROI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Estudos da Embrapa indicam que a polinização por abelhas pode aumentar a produtividade do café arábica em até 20%. Simule o impacto financeiro na sua safra:', 
+              style: TextStyle(color: Colors.grey, fontSize: 14)
+            ),
+            const SizedBox(height: 24),
+            
+            Card(
+              color: Colors.white,
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Sua estimativa de produção (Sacas):', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _producaoController,
+                      keyboardType: TextInputType.number,
+                      onChanged: (val) => setState(() {}), 
+                      decoration: const InputDecoration(border: OutlineInputBorder(), prefixIcon: Icon(Icons.shopping_bag)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Preço atual da Saca de Café:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _precoSacaController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (val) => setState(() {}), 
+                      decoration: const InputDecoration(border: OutlineInputBorder(), prefixText: 'R\$ '),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 24),
-          
-          Card(
-            elevation: 4,
-            color: Colors.green[700],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Lucro Líquido Estimado Extra', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  // 3. Aplica a formatação na tela!
-                  Text(formatterMoeda.format(lucroLiquido), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white30),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Seu Investimento (App):', style: TextStyle(color: Colors.white)),
-                      Text(formatterMoeda.format(investimentoTotal), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('ROI %:', style: TextStyle(color: Colors.white)),
-                      Text('${formatterPct.format(roiPercentual)} %', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                ],
+            const SizedBox(height: 24),
+            
+            Card(
+              elevation: 4,
+              color: Colors.green[700],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Lucro Líquido Estimado Extra', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Text(formatterMoeda.format(lucroLiquido), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    const Divider(color: Colors.white30),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Seu Investimento (App):', style: TextStyle(color: Colors.white)),
+                        Text(formatterMoeda.format(investimentoTotal), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('ROI %:', style: TextStyle(color: Colors.white)),
+                        Text('${formatterPct.format(roiPercentual)} %', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildMapContent() {
+    // O MAPA É O ÚNICO WIDGET QUE NÃO LEVA SINGLECHILDSCROLLVIEW
+    // Isto evita conflitos de arraste entre o Pull-to-refresh e o movimento do mapa!
     if (_isLoadingMapa) return const Center(child: CircularProgressIndicator());
     const Distance distance = Distance();
 
@@ -627,87 +613,91 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    // 1. Agora a tela inicial mantém os contratos que estão aguardando finalização
     final contratosAtivos = _contracts.where((c) {
       final s = c['status'];
       return s == 'PENDENTE' || s == 'ACEITO' || s == 'ENCERRAMENTO_CAFEICULTOR' || s == 'ENCERRAMENTO_APICULTOR';
     }).toList();
     
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Olá, ${widget.userName}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 24),
-          Card(
-            elevation: 3,
-            color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.psychology, color: Colors.green),
-                      const SizedBox(width: 8),
-                      const Text('PREVISÃO DE FLORADA (IA)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                    ],
-                  ),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text('🌻 Janela ideal para locação de colmeias prevista entre 15 e 20 de Outubro.', style: TextStyle(fontSize: 14)),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => SearchBeekeepersScreen(cafeicultorId: widget.userId)))
-                          .then((_) { _buscarContratos(); _buscarApicultoresMapa(); });
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
-                      child: const Text('BUSCAR APICULTORES NA REGIÃO'),
+      physics: const AlwaysScrollableScrollPhysics(), // OBRIGATÓRIO PARA O PULL-TO-REFRESH FUNCIONAR
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Olá, ${widget.userName}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 24),
+            Card(
+              elevation: 3,
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.psychology, color: Colors.green),
+                        const SizedBox(width: 8),
+                        const Text('PREVISÃO DE FLORADA (IA)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
                     ),
-                  ),
-                ],
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    const Text('🌻 Janela ideal para locação de colmeias prevista entre 15 e 20 de Outubro.', style: TextStyle(fontSize: 14)),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchBeekeepersScreen(cafeicultorId: widget.userId)))
+                            .then((_) { _buscarContratos(); _buscarApicultoresMapa(); });
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
+                        child: const Text('BUSCAR APICULTORES NA REGIÃO'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text('CONTRATOS EM ANDAMENTO', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 8),
-          _isLoadingContracts
-              ? const Center(child: CircularProgressIndicator())
-              : contratosAtivos.isEmpty
-                  ? const Text('Nenhum contrato ativo no momento.', style: TextStyle(color: Colors.grey))
-                  : _buildListaContratos(contratosAtivos),
-        ],
+            const SizedBox(height: 24),
+            const Text('CONTRATOS EM ANDAMENTO', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 8),
+            _isLoadingContracts
+                ? const Center(child: CircularProgressIndicator())
+                : contratosAtivos.isEmpty
+                    ? const Text('Nenhum contrato ativo no momento.', style: TextStyle(color: Colors.grey))
+                    : _buildListaContratos(contratosAtivos),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHistoryContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('HISTÓRICO GERAL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 16),
-          _isLoadingContracts
-              ? const Center(child: CircularProgressIndicator())
-              : _contracts.isEmpty
-                  ? const Center(child: Text('Seu histórico está vazio.', style: TextStyle(color: Colors.grey)))
-                  : _buildListaContratos(_contracts), // Histórico exibe TODOS
-        ],
+      physics: const AlwaysScrollableScrollPhysics(), // OBRIGATÓRIO PARA O PULL-TO-REFRESH FUNCIONAR
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('HISTÓRICO GERAL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 16),
+            _isLoadingContracts
+                ? const Center(child: CircularProgressIndicator())
+                : _contracts.isEmpty
+                    ? const Center(child: Text('Seu histórico está vazio.', style: TextStyle(color: Colors.grey)))
+                    : _buildListaContratos(_contracts), 
+          ],
+        ),
       ),
     );
   }
 
-  // ========================================================
-  // LISTA DE CONTRATOS (ATUALIZADA COM AS AÇÕES DE UX)
-  // ========================================================
   Widget _buildListaContratos(List<dynamic> lista) {
     return ListView.builder(
       shrinkWrap: true,
@@ -724,7 +714,6 @@ class _HomeScreenState extends State<HomeScreen> {
         
         String statusTexto = contract['status'] ?? '';
         
-        // --- INÍCIO DA LÓGICA DE STATUS ---
         if (contract['status'] == 'ACEITO') {
           statusColor = Colors.green;
           statusIcon = Icons.check_circle;
@@ -788,7 +777,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListTile(
             leading: CircleAvatar(backgroundColor: statusColor, child: Icon(statusIcon, color: Colors.white)),
             title: Text(contract['apicultor_nome'] ?? 'Apicultor', style: const TextStyle(fontWeight: FontWeight.bold)),
-            // Usa a nossa variável statusTexto personalizada
             subtitle: Text('Status: $statusTexto\nSolicitação: $qtd caixas (R\$ ${valor.toStringAsFixed(2)})'),
             isThreeLine: true,
             trailing: trailingWidget,

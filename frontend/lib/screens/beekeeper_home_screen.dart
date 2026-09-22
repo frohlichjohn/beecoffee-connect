@@ -34,6 +34,17 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     _buscarConfiguracoes(); 
   }
 
+  // ========================================================
+  // FUNÇÃO MESTRE PARA O PULL-TO-REFRESH
+  // ========================================================
+  Future<void> _atualizarTelaInteira() async {
+    // Quando o usuário puxar a tela, re-buscamos tudo do banco de dados!
+    await _buscarPropostas();
+    await _buscarConfiguracoes();
+    // O setState final já é chamado dentro dessas duas funções acima, 
+    // então a tela já vai se redesenhar automaticamente.
+  }
+
   Future<void> _buscarConfiguracoes() async {
     try {
       final response = await http.get(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}/config'));
@@ -68,13 +79,11 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
           const SnackBar(content: Text('Configurações atualizadas com sucesso!'), backgroundColor: Colors.green),
         );
       } else {
-        // Alerta se o servidor recusar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao atualizar: ${response.body}'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
-      // Alerta se houver falha de conexão
       debugPrint('Erro ao atualizar config: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +94,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   }
 
   void _mostrarDialogAtualizacao() {
-    // Variáveis temporárias para a tela do pop-up
     int tempColmeias = _totalColmeias;
     double tempPreco = _precoPorColmeia;
 
@@ -94,8 +102,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            
-            // O limite do slider se ajusta magicamente
             double maxSlider = tempColmeias > 500 ? tempColmeias.toDouble() : 500.0;
 
             return AlertDialog(
@@ -107,20 +113,13 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                   children: [
                     const Text('Total de Colmeias Disponíveis:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 16),
-                    
-                    // ==========================================
-                    // 1. ÁREA DAS COLMEIAS (Com digitação)
-                    // ==========================================
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 32),
-                          onPressed: tempColmeias > 0 
-                            ? () => setStateDialog(() => tempColmeias--) 
-                            : null,
+                          onPressed: tempColmeias > 0 ? () => setStateDialog(() => tempColmeias--) : null,
                         ),
-                        
                         InkWell(
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
@@ -162,14 +161,12 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                             ),
                           ),
                         ),
-
                         IconButton(
                           icon: const Icon(Icons.add_circle_outline, color: Colors.green, size: 32),
                           onPressed: () => setStateDialog(() => tempColmeias++),
                         ),
                       ],
                     ),
-                    
                     Slider(
                       value: tempColmeias.toDouble(),
                       min: 0,
@@ -180,26 +177,16 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                         setStateDialog(() { tempColmeias = val.toInt(); });
                       },
                     ),
-                    
                     const Divider(height: 32),
-                    
                     const Text('Preço por Colmeia (R\$):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 16),
-                    
-                    // ==========================================
-                    // 2. ÁREA DO DINHEIRO (Agora com digitação livre!)
-                    // ==========================================
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 32),
-                          onPressed: tempPreco > 0 
-                            ? () => setStateDialog(() => tempPreco -= 5.0) 
-                            : null,
+                          onPressed: tempPreco > 0 ? () => setStateDialog(() => tempPreco -= 5.0) : null,
                         ),
-                        
-                        // NOVO: Área Clicável para digitar o dinheiro!
                         InkWell(
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
@@ -218,7 +205,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                                     onPressed: () {
-                                      // Proteção anti-bug: troca vírgula por ponto se o usuário usar o padrão brasileiro
                                       String valorTratado = precoController.text.replaceAll(',', '.');
                                       double? novoValor = double.tryParse(valorTratado);
                                       if (novoValor != null && novoValor >= 0) {
@@ -243,7 +229,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                             ),
                           ),
                         ),
-
                         IconButton(
                           icon: const Icon(Icons.add_circle_outline, color: Colors.green, size: 32),
                           onPressed: () => setStateDialog(() => tempPreco += 5.0),
@@ -261,8 +246,8 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], foregroundColor: Colors.white),
                   onPressed: () {
-                    Navigator.pop(context); // Fecha o pop-up
-                    _atualizarConfiguracoes(tempColmeias, tempPreco); // Salva no banco!
+                    Navigator.pop(context); 
+                    _atualizarConfiguracoes(tempColmeias, tempPreco); 
                   },
                   child: const Text('Salvar Alterações'),
                 ),
@@ -274,9 +259,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     );
   }
 
-  // ========================================================
-  // NOVO: Pop-up de Dupla Confirmação para o Apicultor
-  // ========================================================
   void _confirmarAcao(String titulo, String mensagem, VoidCallback onConfirm) {
     showDialog(
       context: context,
@@ -327,9 +309,8 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
       );
       
       if (response.statusCode == 200) {
-        _buscarPropostas(); // Atualiza a tela se der sucesso
+        _buscarPropostas();
       } else {
-        // NOVO: Alerta visual para o Apicultor se o banco recusar
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -351,9 +332,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     } catch (e) {}
   }
 
-// ========================================================
-  // JANELA: Alterar Senha
-  // ========================================================
   void _mostrarDialogAlterarSenha() {
     TextEditingController senhaController = TextEditingController();
     TextEditingController confirmaSenhaController = TextEditingController();
@@ -368,7 +346,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
             children: [
               TextField(
                 controller: senhaController,
-                obscureText: true, // Esconde a senha com asteriscos
+                obscureText: true, 
                 decoration: const InputDecoration(labelText: 'Nova Senha', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
               ),
               const SizedBox(height: 16),
@@ -393,7 +371,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                   return;
                 }
 
-                Navigator.pop(context); // Fecha o pop-up
+                Navigator.pop(context); 
                 
                 try {
                   final response = await http.put(
@@ -416,11 +394,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     );
   }
 
-  // ========================================================
-  // JANELA: Apagar Conta (Com Dupla Confirmação)
-  // ========================================================
   void _excluirConta() {
-    // 1ª Confirmação
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -431,9 +405,8 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(context); // Fecha o primeiro
+              Navigator.pop(context); 
               
-              // 2ª Confirmação Absoluta
               showDialog(
                 context: context,
                 builder: (context2) => AlertDialog(
@@ -448,12 +421,7 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                         try {
                           final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
                           if (response.statusCode == 200) {
-                          // Resolve o aviso azul do Flutter: verifica se a tela ainda está ativa
                             if (!mounted) return;
-                            // (Opcional) Se usa SharedPreferences para manter o utilizador logado, descomente as 2 linhas abaixo:
-                            // final prefs = await SharedPreferences.getInstance();
-                            // await prefs.clear();
-                            // 1º PASSO: Mostrar a mensagem de sucesso enquanto ainda estamos nesta tela
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                               content: Text('Conta excluída para sempre.'), 
@@ -461,7 +429,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                               ),
                           );
 
-                            // 2º PASSO: Agora sim, redireciona para o Login e destrói o histórico
                             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), 
                             (route) => false,
                             );
@@ -483,20 +450,18 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     );
   }
 
+  // ========================================================
+  // ROOT BUILD (Onde o Pull-to-Refresh abraça o App Inteiro)
+  // ========================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('BeeCoffee Connect'),
-        backgroundColor: Colors.amber[800], // Laranja característico do Apicultor
+        backgroundColor: Colors.amber[800], 
         foregroundColor: Colors.white,
-        // O botão de logout foi removido daqui para ficar na gaveta!
       ),
-      
-      // ==========================================
-      // NOVO: MENU LATERAL (DRAWER) DO APICULTOR
-      // ==========================================
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -509,52 +474,49 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
                 children: [
                   const Icon(Icons.account_circle, size: 64, color: Colors.white),
                   const SizedBox(height: 12),
-                  // Usa o nome real do apicultor que vem do login
                   Text('Olá, ${widget.userName}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
-            
             ListTile(
               leading: const Icon(Icons.lock_reset, color: Colors.grey),
               title: const Text('Alterar Senha'),
               onTap: () {
-                Navigator.pop(context); // Fecha a gaveta
-                _mostrarDialogAlterarSenha(); // Abre a janelinha nova
+                Navigator.pop(context); 
+                _mostrarDialogAlterarSenha(); 
               },
             ),
-            
             ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
               title: const Text('Apagar Conta', style: TextStyle(color: Colors.redAccent)),
               onTap: () {
-                Navigator.pop(context); // Fecha a gaveta
-                _excluirConta(); // Abre a dupla confirmação
+                Navigator.pop(context); 
+                _excluirConta(); 
               },
             ),
-            
             const Divider(), 
-            
             ListTile(
               leading: const Icon(Icons.exit_to_app, color: Colors.grey),
               title: const Text('Sair do Aplicativo'),
               onTap: () {
-                // Desloga e volta para a tela de Login
                 Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
               },
             ),
           ],
         ),
       ),
-      // ==========================================
-      // Fim do Menu Lateral
-      // ==========================================
 
-      body: _buildBody(), 
+      // Aqui aplicamos a função mágica em TUDO que for renderizado no body!
+      body: RefreshIndicator(
+        onRefresh: _atualizarTelaInteira,
+        color: Colors.amber[800],
+        child: _buildBody(),
+      ),
+
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800], // Cor base do apicultor
+        selectedItemColor: Colors.amber[800], 
         unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() { _selectedIndex = index; }),
         items: const [
@@ -570,136 +532,126 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   Widget _buildBody() {
     switch (_selectedIndex) {
       case 0: return _buildHomeContent();
-      case 1: return _buildPropostasContent(); // AGORA CHAMA A NOVA TELA
-      case 2: return _buildGanhosContent();    // AGORA CHAMA A NOVA TELA
+      case 1: return _buildPropostasContent(); 
+      case 2: return _buildGanhosContent();    
       case 3: return _buildHistoryContent();
       default: return _buildHomeContent();
     }
   }
 
-  // ========================================================
-  // NOVA ABA 1: CENTRAL DE PROPOSTAS (Inbox)
-  // ========================================================
   Widget _buildPropostasContent() {
-    // Filtra apenas as propostas novinhas em folha (PENDENTE)
     final propostasPendentes = _propostas.where((p) => p['status'] == 'PENDENTE').toList();
     
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.mail_outline, color: Colors.amber[800], size: 28),
-              const SizedBox(width: 8),
-              const Text('NOVIDADES', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Avalie as solicitações de locação enviadas pelos cafeicultores.', style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 24),
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : propostasPendentes.isEmpty
-                  ? Center(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 40),
-                          Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          const Text('Sua caixa de propostas está vazia.', style: TextStyle(color: Colors.grey, fontSize: 16)),
-                        ],
-                      ),
-                    )
-                  : _buildListaPropostas(propostasPendentes),
-        ],
+      physics: const AlwaysScrollableScrollPhysics(), // GARANTE QUE PODE SER PUXADO
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.mail_outline, color: Colors.amber[800], size: 28),
+                const SizedBox(width: 8),
+                const Text('NOVIDADES', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text('Avalie as solicitações de locação enviadas pelos cafeicultores.', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 24),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : propostasPendentes.isEmpty
+                    ? Center(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 40),
+                            Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            const Text('Sua caixa de propostas está vazia.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          ],
+                        ),
+                      )
+                    : _buildListaPropostas(propostasPendentes),
+          ],
+        ),
       ),
     );
   }
 
-  // ========================================================
-  // NOVA ABA 2: PAINEL DE GANHOS FINANCEIROS
-  // ========================================================
   Widget _buildGanhosContent() {
-    // Filtra os status para calcular os valores
     final finalizados = _propostas.where((p) => p['status'] == 'FINALIZADO').toList();
     final aReceberList = _propostas.where((p) => p['status'] == 'ACEITO' || p['status'] == 'ENCERRAMENTO_CAFEICULTOR' || p['status'] == 'ENCERRAMENTO_APICULTOR').toList();
 
-    // Calcula a soma (faturamento)
     double ganhosTotais = finalizados.fold(0.0, (soma, item) => soma + (double.tryParse(item['valor_total']?.toString() ?? '0') ?? 0.0));
     double aReceber = aReceberList.fold(0.0, (soma, item) => soma + (double.tryParse(item['valor_total']?.toString() ?? '0') ?? 0.0));
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('RESUMO FINANCEIRO', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 16),
-          
-          // Card Principal de Faturamento
-          Card(
-            elevation: 4,
-            color: Colors.green[700],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Ganhos Totais (Finalizados)', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Text('R\$ ${ganhosTotais.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white30),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Parcerias Concluídas:', style: TextStyle(color: Colors.white)),
-                      Text('${finalizados.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                ],
+      physics: const AlwaysScrollableScrollPhysics(), // GARANTE QUE PODE SER PUXADO
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('RESUMO FINANCEIRO', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 4,
+              color: Colors.green[700],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Ganhos Totais (Finalizados)', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 8),
+                    Text('R\$ ${ganhosTotais.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    const Divider(color: Colors.white30),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Parcerias Concluídas:', style: TextStyle(color: Colors.white)),
+                        Text('${finalizados.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Card Secundário de Previsão
-          Card(
-            elevation: 2,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: CircleAvatar(backgroundColor: Colors.amber[100], child: Icon(Icons.pending_actions, color: Colors.amber[800])),
-              title: const Text('A Receber (Em andamento)', style: TextStyle(color: Colors.grey, fontSize: 14)),
-              subtitle: Text('R\$ ${aReceber.toStringAsFixed(2)}', style: const TextStyle(color: Colors.brown, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 2,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: CircleAvatar(backgroundColor: Colors.amber[100], child: Icon(Icons.pending_actions, color: Colors.amber[800])),
+                title: const Text('A Receber (Em andamento)', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                subtitle: Text('R\$ ${aReceber.toStringAsFixed(2)}', style: const TextStyle(color: Colors.brown, fontSize: 20, fontWeight: FontWeight.bold)),
+              ),
             ),
-          ),
-          
-          const SizedBox(height: 32),
-          const Text('HISTÓRICO DE RECEBIMENTOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 8),
-          
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : finalizados.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('Você ainda não possui contratos finalizados.', style: TextStyle(color: Colors.grey)),
-                    )
-                  // Reutiliza a lista para mostrar apenas os finalizados embaixo do painel
-                  : _buildListaPropostas(finalizados),
-        ],
+            const SizedBox(height: 32),
+            const Text('HISTÓRICO DE RECEBIMENTOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 8),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : finalizados.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text('Você ainda não possui contratos finalizados.', style: TextStyle(color: Colors.grey)),
+                      )
+                    : _buildListaPropostas(finalizados),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHomeContent() {
-    // 1. Apicultor também continua vendo os contratos pendentes de encerramento na Home
     final propostasAtivas = _propostas.where((p) {
       final s = p['status'];
       return s == 'PENDENTE' || s == 'ACEITO' || s == 'ENCERRAMENTO_CAFEICULTOR' || s == 'ENCERRAMENTO_APICULTOR';
@@ -707,7 +659,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     
     int alugadasReais = 0;
     for (var proposta in propostasAtivas) {
-      // 2. Colmeias só voltam a ficar "Disponíveis" após o FINALIZADO completo
       if (proposta['status'] == 'ACEITO' || 
           proposta['status'] == 'ENCERRAMENTO_CAFEICULTOR' || 
           proposta['status'] == 'ENCERRAMENTO_APICULTOR') {
@@ -719,91 +670,95 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     if (colmeiasDisponiveis < 0) colmeiasDisponiveis = 0; 
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Olá, ${widget.userName}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 24),
-
-          Card(
-            elevation: 2,
-            color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.hive, color: Colors.amber[800]),
-                          const SizedBox(width: 8),
-                          const Text('GESTÃO DE COLMEIAS', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Text('R\$ ${_precoPorColmeia.toStringAsFixed(2)} / un', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                    ],
-                  ),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem('Disponíveis', colmeiasDisponiveis.toString(), Colors.green),
-                      _buildStatItem('Alugadas', alugadasReais.toString(), Colors.orange),
-                      _buildStatItem('Total', _totalColmeias.toString(), Colors.blue),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _mostrarDialogAtualizacao,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], foregroundColor: Colors.white),
-                      child: const Text('CONFIGURAR PERFIL'),
+      physics: const AlwaysScrollableScrollPhysics(), // GARANTE QUE PODE SER PUXADO
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Olá, ${widget.userName}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 24),
+            Card(
+              elevation: 2,
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.hive, color: Colors.amber[800]),
+                            const SizedBox(width: 8),
+                            const Text('GESTÃO DE COLMEIAS', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        Text('R\$ ${_precoPorColmeia.toStringAsFixed(2)} / un', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
                     ),
-                  )
-                ],
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatItem('Disponíveis', colmeiasDisponiveis.toString(), Colors.green),
+                        _buildStatItem('Alugadas', alugadasReais.toString(), Colors.orange),
+                        _buildStatItem('Total', _totalColmeias.toString(), Colors.blue),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _mostrarDialogAtualizacao,
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], foregroundColor: Colors.white),
+                        child: const Text('CONFIGURAR PERFIL'),
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text('AÇÕES PENDENTES E PARCERIAS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 8),
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : propostasAtivas.isEmpty
-                  ? const Text('Nenhuma ação pendente no momento.', style: TextStyle(color: Colors.grey))
-                  : _buildListaPropostas(propostasAtivas),
-        ],
+            const SizedBox(height: 24),
+            const Text('AÇÕES PENDENTES E PARCERIAS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 8),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : propostasAtivas.isEmpty
+                    ? const Text('Nenhuma ação pendente no momento.', style: TextStyle(color: Colors.grey))
+                    : _buildListaPropostas(propostasAtivas),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHistoryContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('HISTÓRICO GERAL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
-          const SizedBox(height: 16),
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _propostas.isEmpty
-                  ? const Center(child: Text('Seu histórico está vazio.', style: TextStyle(color: Colors.grey)))
-                  : _buildListaPropostas(_propostas),
-        ],
+      physics: const AlwaysScrollableScrollPhysics(), // GARANTE QUE PODE SER PUXADO
+      child: Container(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height), // ESTICA A TELA
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('HISTÓRICO GERAL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown)),
+            const SizedBox(height: 16),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _propostas.isEmpty
+                    ? const Center(child: Text('Seu histórico está vazio.', style: TextStyle(color: Colors.grey)))
+                    : _buildListaPropostas(_propostas),
+          ],
+        ),
       ),
     );
   }
 
-  // ========================================================
-  // LISTA DE PROPOSTAS DO APICULTOR (COM DUPLA CONFIRMAÇÃO)
-  // ========================================================
   Widget _buildListaPropostas(List<dynamic> lista) {
     return ListView.builder(
       shrinkWrap: true,
@@ -820,7 +775,6 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
         
         String statusTexto = proposta['status'] ?? '';
 
-        // --- INÍCIO DA LÓGICA DE STATUS ---
         if (proposta['status'] == 'PENDENTE') {
           trailingWidget = Row(
             mainAxisSize: MainAxisSize.min,
