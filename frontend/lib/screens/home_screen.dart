@@ -7,6 +7,7 @@ import '../main.dart';
 import 'search_beekeepers_screen.dart';
 import 'package:intl/intl.dart';
 
+
 class HomeScreen extends StatefulWidget {
   final String userId; 
   final String userName;
@@ -217,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _excluirConta() {
+    // 1ª Confirmação
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -227,8 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(context); 
+              Navigator.pop(context); // Fecha o primeiro pop-up
               
+              // 2ª Confirmação Absoluta
               showDialog(
                 context: context,
                 builder: (context2) => AlertDialog(
@@ -239,25 +242,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
                       onPressed: () async {
-                        Navigator.pop(context2);
+                        Navigator.pop(context2); // Fecha o segundo pop-up
+                        
+                        // O SEGREDO ESTÁ AQUI: Salvar o contexto antes da chamada assíncrona
+                        final navegador = Navigator.of(context);
+                        final mensageiro = ScaffoldMessenger.of(context);
+
                         try {
                           final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
-                          if (response.statusCode == 200) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
+                          
+                          // Aceita tanto 200 (OK) quanto 204 (No Content)
+                          if (response.statusCode == 200 || response.statusCode == 204) {
+                            
+                            // Mostra a mensagem usando a variável salva
+                            mensageiro.showSnackBar(
                               const SnackBar(
-                              content: Text('Conta excluída para sempre.'), 
-                              backgroundColor: Colors.black,
+                                content: Text('Conta excluída para sempre.'), 
+                                backgroundColor: Colors.black,
                               ),
-                          );
-
-                            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                            (route) => false,
                             );
+
+                            // Navega para o Login destruindo a árvore de telas
+                            navegador.pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                              (route) => false,
+                            );
+                          } else {
+                            debugPrint('Falha ao excluir. Status: ${response.statusCode}');
                           }
-                          } catch (e) {
-                            debugPrint('Erro: $e');
-                          }
+                        } catch (e) {
+                          debugPrint('Erro: $e');
+                        }
                       },
                       child: const Text('APAGAR TUDO'),
                     ),
