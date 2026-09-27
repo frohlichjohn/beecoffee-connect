@@ -396,71 +396,122 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
   }
 
   void _excluirConta() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Zona de Perigo!', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-        content: const Text('Tem certeza que deseja apagar sua conta? Todos os seus contratos também serão cancelados automaticamente.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Não, me tire daqui')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () {
-              Navigator.pop(context); // Fecha o primeiro pop-up
-              
-              showDialog(
-                context: context,
-                builder: (context2) => AlertDialog(
-                  title: const Text('Aviso Final', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-                  content: const Text('Esta ação não pode ser desfeita. Confirmar exclusão permanente?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(context2), child: const Text('Cancelar')),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
-                      onPressed: () async {
-                        Navigator.pop(context2); // Fecha o segundo pop-up
-                        
-                        // Guarda as referências de contexto de forma segura
-                        final navegador = Navigator.of(context);
-                        final mensageiro = ScaffoldMessenger.of(context);
+  final telaContext = context;
 
-                        try {
-                          final response = await http.delete(Uri.parse('https://beecoffee-connect.onrender.com/api/users/${widget.userId}'));
-                          
-                          // Verifica se a API apagou com sucesso (200 ou 204)
-                          if (response.statusCode == 200 || response.statusCode == 204) {
-                            
-                            mensageiro.showSnackBar(
-                              const SnackBar(
-                                content: Text('Conta excluída para sempre.'), 
-                                backgroundColor: Colors.black,
-                              ),
-                            );
-
-                            // Força o retorno imediato para a tela de login do main.dart
-                            navegador.pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                              (route) => false,
-                            );
-                          } else {
-                            debugPrint('Falha ao apagar. Código: ${response.statusCode}');
-                          }
-                        } catch (e) {
-                          debugPrint('Erro de conexão: $e');
-                        }
-                      },
-                      child: const Text('APAGAR TUDO'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text('Sim, quero apagar'),
-          ),
-        ],
+  showDialog(
+    context: telaContext,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text(
+        'Zona de Perigo!',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.red,
+        ),
       ),
-    );
-  }
+      content: const Text(
+        'Tem certeza que deseja apagar sua conta? '
+        'Todos os seus contratos também serão cancelados automaticamente.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Não, me tire daqui'),
+        ),
+
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () {
+            // Fecha o primeiro diálogo
+            Navigator.pop(dialogContext);
+
+            // Abre o segundo diálogo usando o contexto da tela
+            showDialog(
+              context: telaContext,
+              builder: (dialogContext2) => AlertDialog(
+                title: const Text(
+                  'Aviso Final',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                content: const Text(
+                  'Esta ação não pode ser desfeita. '
+                  'Confirmar exclusão permanente?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext2),
+                    child: const Text('Cancelar'),
+                  ),
+
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(dialogContext2);
+
+                      try {
+                        final response = await http.delete(
+                          Uri.parse(
+                            'https://beecoffee-connect.onrender.com/api/users/${widget.userId}',
+                          ),
+                        );
+
+                        debugPrint(
+                          'Status exclusão: ${response.statusCode}',
+                        );
+                        debugPrint(
+                          'Resposta API: ${response.body}',
+                        );
+
+                        if (response.statusCode == 200 ||
+                            response.statusCode == 204) {
+                          
+                          if (!telaContext.mounted) return;
+
+                          ScaffoldMessenger.of(telaContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Conta excluída para sempre.'),
+                              backgroundColor: Colors.black,
+                            ),
+                          );
+
+                          Navigator.of(telaContext).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        } else {
+                          debugPrint(
+                            'Falha ao apagar. '
+                            'Código: ${response.statusCode}',
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint(
+                          'Erro de conexão ao excluir conta: $e',
+                        );
+                      }
+                    },
+                    child: const Text('APAGAR TUDO'),
+                  ),
+                ],
+              ),
+            );
+          },
+          child: const Text('Sim, quero apagar'),
+        ),
+      ],
+    ),
+  );
+}
 
   // ========================================================
   // ROOT BUILD (Onde o Pull-to-Refresh abraça o App Inteiro)
