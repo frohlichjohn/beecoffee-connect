@@ -313,26 +313,41 @@ app.put('/api/users/:id/password', async (req, res) => {
 // ==========================================
 // ROTA 15: Apagar Conta DEFINITIVAMENTE
 // ==========================================
+// Rota para apagar a conta do utilizador
 app.delete('/api/users/:id', async (req, res) => {
   const userId = req.params.id;
+
   try {
-    // 1º APAGAR OS CONTRATOS LIGADOS A ESTE UTILIZADOR
-    await pool.query('DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1', [userId]);
-    
-    // 2º APAGAR AS PROPRIEDADES (opcional se não tiver CASCADE)
-    await pool.query('DELETE FROM properties WHERE user_id = $1', [userId]);
+    // 1º PASSO: Apagar todos os contratos onde ele é cafeicultor ou apicultor
+    // (Isto liberta a trava de segurança do PostgreSQL)
+    await pool.query(
+      'DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1',
+      [userId]
+    );
 
-    // 3º SÓ AGORA APAGAR O UTILIZADOR
-    const deleteUser = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    // 2º PASSO: Apagar as propriedades (fazendas/apiários) dele
+    await pool.query(
+      'DELETE FROM properties WHERE user_id = $1',
+      [userId]
+    );
 
-    if (deleteUser.rowCount === 0) {
-      return res.status(404).json({ error: "Utilizador não encontrado." });
+    // 3º PASSO: Agora sim, apagar o utilizador de forma segura
+    const result = await pool.query(
+      'DELETE FROM users WHERE id = $1',
+      [userId]
+    );
+
+    // Se não encontrou o utilizador
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
+
+    // Retorna 200 (Sucesso) para o Flutter fazer o redirecionamento
+    res.status(200).json({ message: 'Conta apagada com sucesso!' });
     
-    res.status(200).json({ message: "Conta apagada com sucesso!" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro interno no servidor ao apagar a conta." });
+    console.error('Erro ao excluir conta:', error);
+    res.status(500).json({ error: 'Erro interno no servidor ao apagar a conta.' });
   }
 });
 
