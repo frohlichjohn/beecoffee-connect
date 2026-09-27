@@ -313,40 +313,45 @@ app.put('/api/users/:id/password', async (req, res) => {
 // ==========================================
 // ROTA 15: Apagar Conta DEFINITIVAMENTE
 // ==========================================
-// Rota para apagar a conta do utilizador
 app.delete('/api/users/:id', async (req, res) => {
   const userId = req.params.id;
 
   try {
-    // 1º PASSO: Apagar todos os contratos onde ele é cafeicultor ou apicultor
-    // (Isto liberta a trava de segurança do PostgreSQL)
+    // 1º PASSO: Apagar os registos de produtividade (logs) que pertencem aos contratos deste utilizador
+    await pool.query(`
+      DELETE FROM productivity_logs 
+      WHERE contract_id IN (
+        SELECT id FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1
+      )
+    `, [userId]);
+
+    // 2º PASSO: Apagar todos os contratos onde ele é cafeicultor ou apicultor
     await pool.query(
       'DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1',
       [userId]
     );
 
-    // 2º PASSO: Apagar as propriedades (fazendas/apiários) dele
+    // 3º PASSO: Apagar as propriedades (fazendas/apiários)
     await pool.query(
       'DELETE FROM properties WHERE user_id = $1',
       [userId]
     );
 
-    // 3º PASSO: Agora sim, apagar o utilizador de forma segura
+    // 4º PASSO: Agora sim, apagar o utilizador
     const result = await pool.query(
       'DELETE FROM users WHERE id = $1',
       [userId]
     );
 
-    // Se não encontrou o utilizador
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
 
-    // Retorna 200 (Sucesso) para o Flutter fazer o redirecionamento
     res.status(200).json({ message: 'Conta apagada com sucesso!' });
     
   } catch (error) {
-    console.error('Erro ao excluir conta:', error);
+    // Isto vai imprimir o erro exato (ex: violação de chave) no terminal do Render!
+    console.error('Erro FATAL ao excluir conta:', error);
     res.status(500).json({ error: 'Erro interno no servidor ao apagar a conta.' });
   }
 });
