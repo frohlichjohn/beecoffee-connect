@@ -395,123 +395,134 @@ class _BeekeeperHomeScreenState extends State<BeekeeperHomeScreen> {
     );
   }
 
+  // ========================================================
+  // JANELA: Apagar Conta (Com Dupla Confirmação e Contexto Seguro)
+  // ========================================================
   void _excluirConta() {
-  final telaContext = context;
+    final telaContext = context;
 
-  showDialog(
-    context: telaContext,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text(
-        'Zona de Perigo!',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.red,
-        ),
-      ),
-      content: const Text(
-        'Tem certeza que deseja apagar sua conta? '
-        'Todos os seus contratos também serão cancelados automaticamente.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Não, me tire daqui'),
-        ),
-
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
+    showDialog(
+      context: telaContext,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          'Zona de Perigo!',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
           ),
-          onPressed: () {
-            // Fecha o primeiro diálogo
-            Navigator.pop(dialogContext);
+        ),
+        content: const Text(
+          'Tem certeza que deseja apagar sua conta? '
+          'Todos os seus contratos também serão cancelados automaticamente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Não, me tire daqui'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              // Fecha o primeiro diálogo
+              Navigator.pop(dialogContext);
 
-            // Abre o segundo diálogo usando o contexto da tela
-            showDialog(
-              context: telaContext,
-              builder: (dialogContext2) => AlertDialog(
-                title: const Text(
-                  'Aviso Final',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                content: const Text(
-                  'Esta ação não pode ser desfeita. '
-                  'Confirmar exclusão permanente?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext2),
-                    child: const Text('Cancelar'),
-                  ),
-
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
+              // Abre o segundo diálogo usando o contexto da tela
+              showDialog(
+                context: telaContext,
+                builder: (dialogContext2) => AlertDialog(
+                  title: const Text(
+                    'Aviso Final',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
                     ),
-                    onPressed: () async {
-                      Navigator.pop(dialogContext2);
+                  ),
+                  content: const Text(
+                    'Esta ação não pode ser desfeita. '
+                    'Confirmar exclusão permanente?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext2),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(dialogContext2);
 
-                      try {
-                        final response = await http.delete(
-                          Uri.parse(
-                            'https://beecoffee-connect.onrender.com/api/users/${widget.userId}',
-                          ),
-                        );
-
-                        debugPrint(
-                          'Status exclusão: ${response.statusCode}',
-                        );
-                        debugPrint(
-                          'Resposta API: ${response.body}',
-                        );
-
-                        if (response.statusCode == 200 ||
-                            response.statusCode == 204) {
-                          
-                          if (!telaContext.mounted) return;
-
-                          ScaffoldMessenger.of(telaContext).showSnackBar(
-                            const SnackBar(
-                              content: Text('Conta excluída para sempre.'),
-                              backgroundColor: Colors.black,
+                        try {
+                          final response = await http.delete(
+                            Uri.parse(
+                              'https://beecoffee-connect.onrender.com/api/users/${widget.userId}',
                             ),
                           );
 
-                          Navigator.of(telaContext).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                            (route) => false,
-                          );
-                        } else {
                           debugPrint(
-                            'Falha ao apagar. '
-                            'Código: ${response.statusCode}',
+                            'Status exclusão: ${response.statusCode}',
+                          );
+                          debugPrint(
+                            'Resposta API: ${response.body}',
+                          );
+
+                          if (response.statusCode == 200 ||
+                              response.statusCode == 204) {
+                            
+                            if (!telaContext.mounted) return;
+
+                            ScaffoldMessenger.of(telaContext).showSnackBar(
+                              const SnackBar(
+                                content: Text('Conta excluída para sempre.'),
+                                backgroundColor: Colors.black,
+                              ),
+                            );
+
+                            Navigator.of(telaContext).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          } else {
+                            // MOSTRA O ERRO NA TELA PARA VOCÊ SABER O QUE FALHOU NO BANCO
+                            if (telaContext.mounted) {
+                              ScaffoldMessenger.of(telaContext).showSnackBar(
+                                SnackBar(
+                                  content: Text('Erro do Servidor: ${response.body}'),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 6),
+                                ),
+                              );
+                            }
+                            debugPrint(
+                              'Falha ao apagar. '
+                              'Código: ${response.statusCode}',
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint(
+                            'Erro de conexão ao excluir conta: $e',
                           );
                         }
-                      } catch (e) {
-                        debugPrint(
-                          'Erro de conexão ao excluir conta: $e',
-                        );
-                      }
-                    },
-                    child: const Text('APAGAR TUDO'),
-                  ),
-                ],
-              ),
-            );
-          },
-          child: const Text('Sim, quero apagar'),
-        ),
-      ],
-    ),
-  );
-}
+                      },
+                      child: const Text('APAGAR TUDO'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: const Text('Sim, quero apagar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ========================================================
   // ROOT BUILD (Onde o Pull-to-Refresh abraça o App Inteiro)

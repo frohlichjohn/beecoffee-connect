@@ -314,19 +314,26 @@ app.put('/api/users/:id/password', async (req, res) => {
 // ROTA 15: Apagar Conta DEFINITIVAMENTE
 // ==========================================
 app.delete('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        // 1º: Apaga todos os contratos que pertencem a esta pessoa (seja cafeicultor ou apicultor)
-        await db.query('DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1', [id]);
-        
-        // 2º: Apaga o usuário do sistema
-        await db.query('DELETE FROM users WHERE id = $1', [id]);
+  const userId = req.params.id;
+  try {
+    // 1º APAGAR OS CONTRATOS LIGADOS A ESTE UTILIZADOR
+    await pool.query('DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1', [userId]);
+    
+    // 2º APAGAR AS PROPRIEDADES (opcional se não tiver CASCADE)
+    await pool.query('DELETE FROM properties WHERE user_id = $1', [userId]);
 
-        res.json({ message: 'Usuário e dados apagados com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao apagar conta:', error);
-        res.status(500).json({ error: 'Erro interno ao apagar conta.' });
+    // 3º SÓ AGORA APAGAR O UTILIZADOR
+    const deleteUser = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    if (deleteUser.rowCount === 0) {
+      return res.status(404).json({ error: "Utilizador não encontrado." });
     }
+    
+    res.status(200).json({ message: "Conta apagada com sucesso!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro interno no servidor ao apagar a conta." });
+  }
 });
 
 // ==========================================
