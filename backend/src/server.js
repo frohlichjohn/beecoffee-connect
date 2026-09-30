@@ -320,7 +320,7 @@ app.delete('/api/users/:id', async (req, res) => {
     // 1º PASSO: Tenta apagar os logs convertendo ambos os IDs para texto (::text)
     // Usamos um try/catch isolado. Se falhar, o servidor não trava e continua a apagar o resto!
     try {
-      await pool.query(`
+      await db.query(`
         DELETE FROM productivity_logs 
         WHERE contract_id::text IN (
           SELECT id::text FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1
@@ -331,19 +331,19 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 
     // 2º PASSO: Apagar os contratos
-    await pool.query(
+    await db.query(
       'DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1',
       [userId]
     );
 
     // 3º PASSO: Apagar as propriedades
-    await pool.query(
+    await db.query(
       'DELETE FROM properties WHERE user_id = $1',
       [userId]
     );
 
     // 4º PASSO: Finalmente, apagar o utilizador
-    const result = await pool.query(
+    const result = await db.query(
       'DELETE FROM users WHERE id = $1',
       [userId]
     );
