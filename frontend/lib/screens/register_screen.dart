@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:geolocator/geolocator.dart'; // Pacote correto para GPS
+import 'package:geolocator/geolocator.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String initialRole;
@@ -13,6 +13,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  // 1. CHAVE DO FORMULÁRIO MOVIDA PARA AQUI (Escopo global da classe)
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -28,17 +31,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _cadastrarUsuario() async {
+    // 2. EXECUTA A VALIDAÇÃO AQUI
+    // Se algum validator falhar, ele para a função e mostra os erros em vermelho
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final location = _locationController.text.trim(); 
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty || location.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos, incluindo a localização!')),
-      );
-      return;
-    }
 
     setState(() { _isLoading = true; });
 
@@ -55,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
           Position position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high);
+                 desiredAccuracy: LocationAccuracy.high);
           latitudeCalculada = position.latitude;
           longitudeCalculada = position.longitude;
         }
@@ -119,83 +121,141 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.person_add, size: 70, color: Colors.green),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Nome Completo / Fazenda',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.person),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'E-mail',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.email),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.lock),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _locationController,
-                decoration: InputDecoration(
-                  labelText: 'Cidade / Estado',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.location_city),
-                ),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedRole,
-                decoration: InputDecoration(
-                  labelText: 'Tipo de Perfil',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.group),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'CAFEICULTOR', child: Text('Cafeicultor')),
-                  DropdownMenuItem(value: 'APICULTOR', child: Text('Apicultor')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedRole = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _cadastrarUsuario,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          // 3. ENVOLVENDO A COLUMN COM O WIDGET FORM
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.person_add, size: 70, color: Colors.green),
+                const SizedBox(height: 24),
+                
+                // NOME
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nome Completo / Fazenda',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.person),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('CADASTRAR CONTA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'O nome é obrigatório.';
+                    }
+                    if (value.trim().length < 3) {
+                      return 'O nome deve ter pelo menos 3 letras.';
+                    }
+                    if (RegExp(r'[0-9]').hasMatch(value)) {
+                      return 'O nome não pode conter números.';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                
+                // E-MAIL
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'E-mail',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.email),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'O e-mail é obrigatório.';
+                    }
+                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    if (!emailRegex.hasMatch(value)) {
+                      return 'Digite um e-mail válido (ex: joao@email.com).';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // SENHA
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Senha',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.lock),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'A senha é obrigatória.';
+                    }
+                    if (value.length < 6) {
+                      return 'A senha deve ter no mínimo 6 caracteres.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // CIDADE / ESTADO
+                TextFormField(
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    labelText: 'Cidade / Estado',
+                    hintText: 'Ex: Mogi Mirim/SP',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.location_city),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'A localização é obrigatória.';
+                    }
+                    final cidadeRegex = RegExp(r'^[a-zA-ZÀ-ÿ\s]+/[A-Z]{2}$', caseSensitive: false);
+                    if (!cidadeRegex.hasMatch(value.trim())) {
+                      return 'Use o formato Cidade/UF (Ex: Mogi Mirim/SP).';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // TIPO DE PERFIL
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo de Perfil',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.group),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'CAFEICULTOR', child: Text('Cafeicultor')),
+                    DropdownMenuItem(value: 'APICULTOR', child: Text('Apicultor')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedRole = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 24),
+                
+                // BOTÃO CADASTRAR
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _cadastrarUsuario,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('CADASTRAR CONTA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
