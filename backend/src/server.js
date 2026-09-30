@@ -317,27 +317,32 @@ app.delete('/api/users/:id', async (req, res) => {
   const userId = req.params.id;
 
   try {
-    // 1º PASSO: Apagar os registos de produtividade (logs) que pertencem aos contratos deste utilizador
-    await pool.query(`
-      DELETE FROM productivity_logs 
-      WHERE contract_id IN (
-        SELECT id FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1
-      )
-    `, [userId]);
+    // 1º PASSO: Tenta apagar os logs convertendo ambos os IDs para texto (::text)
+    // Usamos um try/catch isolado. Se falhar, o servidor não trava e continua a apagar o resto!
+    try {
+      await pool.query(`
+        DELETE FROM productivity_logs 
+        WHERE contract_id::text IN (
+          SELECT id::text FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1
+        )
+      `, [userId]);
+    } catch (logError) {
+      console.log('Aviso: Erro ignorado ao apagar productivity_logs:', logError.message);
+    }
 
-    // 2º PASSO: Apagar todos os contratos onde ele é cafeicultor ou apicultor
+    // 2º PASSO: Apagar os contratos
     await pool.query(
       'DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1',
       [userId]
     );
 
-    // 3º PASSO: Apagar as propriedades (fazendas/apiários)
+    // 3º PASSO: Apagar as propriedades
     await pool.query(
       'DELETE FROM properties WHERE user_id = $1',
       [userId]
     );
 
-    // 4º PASSO: Agora sim, apagar o utilizador
+    // 4º PASSO: Finalmente, apagar o utilizador
     const result = await pool.query(
       'DELETE FROM users WHERE id = $1',
       [userId]
@@ -350,9 +355,9 @@ app.delete('/api/users/:id', async (req, res) => {
     res.status(200).json({ message: 'Conta apagada com sucesso!' });
     
   } catch (error) {
-    // Isto vai imprimir o erro exato (ex: violação de chave) no terminal do Render!
     console.error('Erro FATAL ao excluir conta:', error);
-    res.status(500).json({ error: 'Erro interno no servidor ao apagar a conta.' });
+    // DICA MÁGICA: Agora vamos mandar a mensagem de erro REAL do PostgreSQL para a tela do Flutter!
+    res.status(500).json({ error: `Erro do Banco de Dados: ${error.message}` });
   }
 });
 
