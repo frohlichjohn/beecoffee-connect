@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:latlong2/latlong.dart';        
-import 'login_screen.dart'; // <-- NOVO IMPORT
+import 'login_screen.dart'; 
 import 'search_beekeepers_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -11,16 +11,16 @@ class HomeScreen extends StatefulWidget {
   final String userId; 
   final String userName;
   final String location;
-  final double latitude;   // <-- GPS REAL
-  final double longitude;  // <-- GPS REAL
+  final double latitude;   
+  final double longitude;  
 
   const HomeScreen({
     super.key, 
     required this.userId,
     required this.userName, 
     required this.location,
-    required this.latitude,  // <-- GPS REAL
-    required this.longitude, // <-- GPS REAL
+    required this.latitude,  
+    required this.longitude, 
   });
 
   @override
@@ -176,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (response.statusCode == 200 || response.statusCode == 204) {
                             if (!telaContext.mounted) return;
                             ScaffoldMessenger.of(telaContext).showSnackBar(const SnackBar(content: Text('Conta excluída para sempre.'), backgroundColor: Colors.black));
-                            // <-- NAVEGAÇÃO CORRETA PARA A NOVA TELA DE LOGIN
                             Navigator.of(telaContext).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (route) => false);
                           } else {
                             if (telaContext.mounted) ScaffoldMessenger.of(telaContext).showSnackBar(SnackBar(content: Text('Erro do Servidor: ${response.body}'), backgroundColor: Colors.red, duration: const Duration(seconds: 6)));
@@ -226,7 +225,6 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.exit_to_app, color: Colors.grey),
               title: const Text('Sair do Aplicativo'),
               onTap: () {
-                // <-- NAVEGAÇÃO CORRETA PARA A NOVA TELA DE LOGIN
                 Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
               },
             ),
@@ -333,8 +331,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isLoadingMapa) return const Center(child: CircularProgressIndicator());
     const Distance distance = Distance();
     
-    // <-- O MAPA AGORA USA A COORDENADA DA SUA FAZENDA
-    final LatLng centroCafeicultor = LatLng(widget.latitude, widget.longitude);
+    // ==========================================
+    // REDE DE SEGURANÇA (MOGI MIRIM)
+    // Se o banco retornar 0.0 (Null Island), joga para Mogi Mirim
+    // ==========================================
+    final LatLng centroCafeicultor = (widget.latitude == 0.0 && widget.longitude == 0.0)
+        ? const LatLng(-22.4332, -46.9583) 
+        : LatLng(widget.latitude, widget.longitude);
 
     final marcadoresApicultores = _apicultoresMapa.where((apicultor) {
       final double lat = double.tryParse(apicultor['latitude']?.toString() ?? '0') ?? 0.0;
@@ -444,7 +447,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // <-- NOVO: ENVIAMOS O GPS PARA A TELA DE BUSCA
                           Navigator.push(context, MaterialPageRoute(builder: (context) => SearchBeekeepersScreen(cafeicultorId: widget.userId, latitude: widget.latitude, longitude: widget.longitude)))
                             .then((_) { _buscarContratos(); _buscarApicultoresMapa(); });
                         },

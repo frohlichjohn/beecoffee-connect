@@ -5,8 +5,8 @@ import 'package:latlong2/latlong.dart';
 
 class SearchBeekeepersScreen extends StatefulWidget {
   final String cafeicultorId;
-  final double latitude;   // <-- NOVO: Recebe latitude da Home
-  final double longitude;  // <-- NOVO: Recebe longitude da Home
+  final double latitude;   
+  final double longitude;  
 
   const SearchBeekeepersScreen({
     super.key, 
@@ -37,8 +37,12 @@ class _SearchBeekeepersScreenState extends State<SearchBeekeepersScreen> {
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         
-        // Ponto central real da fazenda!
-        final LatLng centroCafeicultor = LatLng(widget.latitude, widget.longitude);
+        // ==========================================
+        // REDE DE SEGURANÇA (MOGI MIRIM)
+        // ==========================================
+        final LatLng centroCafeicultor = (widget.latitude == 0.0 && widget.longitude == 0.0)
+            ? const LatLng(-22.4332, -46.9583) 
+            : LatLng(widget.latitude, widget.longitude);
 
         data.sort((a, b) {
           final latA = double.tryParse(a['latitude']?.toString() ?? '0') ?? 0.0;
@@ -138,7 +142,12 @@ class _SearchBeekeepersScreenState extends State<SearchBeekeepersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final LatLng centroCafeicultor = LatLng(widget.latitude, widget.longitude); // <-- NOVO
+    // ==========================================
+    // REDE DE SEGURANÇA (MOGI MIRIM)
+    // ==========================================
+    final LatLng centroCafeicultor = (widget.latitude == 0.0 && widget.longitude == 0.0)
+        ? const LatLng(-22.4332, -46.9583) 
+        : LatLng(widget.latitude, widget.longitude);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
