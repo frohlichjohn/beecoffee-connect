@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
     super.key, 
     required this.userId,
     required this.userName, 
-    required this.location,
+    required this.location, // A string que o utilizador digitou no registo (ex: "Campinas/SP")
     required this.latitude,  
     required this.longitude, 
   });
@@ -39,14 +39,74 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingMapa = true;
   
   int _selectedIndex = 0; 
-
   double _raioBuscaKm = 30.0; 
+
+  // ==========================================
+  // VARIÁVEIS DO MAPA DINÂMICO
+  // ==========================================
+  double _latAtual = 0.0;
+  double _lngAtual = 0.0;
+  bool _isResolvingLocation = true;
 
   @override
   void initState() {
     super.initState();
+    _iniciarDados();
+  }
+
+  Future<void> _iniciarDados() async {
+    await _resolverCoordenadasPorCidade(); // Resolve o GPS primeiro!
     _buscarContratos();
-    _buscarApicultoresMapa(); 
+    _buscarApicultoresMapa();
+  }
+
+  // ==========================================
+  // O MOTOR DE GEOCODIFICAÇÃO (A SOLUÇÃO PERFEITA)
+  // ==========================================
+  Future<void> _resolverCoordenadasPorCidade() async {
+    // 1. Se o banco de dados já nos deu um GPS real e válido, usamos imediatamente.
+    if (widget.latitude != 0.0 && widget.longitude != 0.0) {
+      setState(() {
+        _latAtual = widget.latitude;
+        _lngAtual = widget.longitude;
+        _isResolvingLocation = false;
+      });
+      return;
+    }
+
+    // 2. Se o GPS falhou (ou a conta é antiga), convertemos o nome da cidade em coordenadas!
+    try {
+      // Pega no nome da cidade (ex: "Mogi Mirim") e limpa o texto
+      final cidadeBusca = widget.location.split('/')[0].trim();
+      final query = Uri.encodeComponent(cidadeBusca);
+      final url = 'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'BeeCoffeeConnectApp/1.0'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          setState(() {
+            _latAtual = double.parse(data[0]['lat'].toString());
+            _lngAtual = double.parse(data[0]['lon'].toString());
+            _isResolvingLocation = false;
+          });
+          return; // Sucesso! Conseguimos a localização exata da cidade.
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro na conversão da cidade: $e');
+    }
+
+    // 3. Fallback de extrema segurança (se não houver internet para a conversão)
+    setState(() {
+      _latAtual = -22.4332; // Mogi Mirim
+      _lngAtual = -46.9583;
+      _isResolvingLocation = false;
+    });
   }
 
   Future<void> _atualizarTelaInteira() async {
@@ -328,16 +388,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMapContent() {
-    if (_isLoadingMapa) return const Center(child: CircularProgressIndicator());
+    // Aguarda a resolução da API de Geolocalização antes de mostrar o mapa
+    if (_isLoadingMapa || _isResolvingLocation) {
+      return const Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('A localizar a sua fazenda...', style: TextStyle(color: Colors.grey))
+        ],
+      ));
+    }
+    
     const Distance distance = Distance();
     
-    // ==========================================
-    // REDE DE SEGURANÇA (MOGI MIRIM)
-    // Se o banco retornar 0.0 (Null Island), joga para Mogi Mirim
-    // ==========================================
-    final LatLng centroCafeicultor = (widget.latitude == 0.0 && widget.longitude == 0.0)
-        ? const LatLng(-22.4332, -46.9583) 
-        : LatLng(widget.latitude, widget.longitude);
+    // O mapa usa as coordenadas precisas que a nossa nova função gerou!
+    final LatLng centroCafeicultor = LatLng(_latAtual, _lngAtual);
 
     final marcadoresApicultores = _apicultoresMapa.where((apicultor) {
       final double lat = double.tryParse(apicultor['latitude']?.toString() ?? '0') ?? 0.0;
@@ -392,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Expanded(
           child: FlutterMap(
-            options: MapOptions(initialCenter: centroCafeicultor, initialZoom: 9.5),
+            options: MapOptions(initialCenter: centroCafeicultor, initialZoom: 10.5), // Aumentei um pouco o zoom para focar melhor na cidade
             children: [
               TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.beecoffee.app'),
               CircleLayer(
@@ -447,8 +513,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchBeekeepersScreen(cafeicultorId: widget.userId, latitude: widget.latitude, longitude: widget.longitude)))
-                            .then((_) { _buscarContratos(); _buscarApicultoresMapa(); });
+                          // Aqui passamos as coordenadas precisas para o ecrã de busca!
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchBeekeepersScreen(
+                            cafeicultorId: widget.userId, 
+                            latitude: _latAtual, 
+                            longitude: _lngAtual
+                          ))).then((_) { _buscarContratos(); _buscarApicultoresMapa(); });
                         },
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white),
                         child: const Text('BUSCAR APICULTORES NA REGIÃO'),
