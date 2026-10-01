@@ -26,7 +26,7 @@ app.get('/api/status', async (req, res) => {
 });
 
 // ==========================================
-// ROTA 2: Validação de Login
+// ROTA 2: Validação de Login (ATUALIZADA COM GPS)
 // ==========================================
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
@@ -49,7 +49,6 @@ app.post('/api/login', async (req, res) => {
         }
 
         // Login bem-sucedido! Retornamos os dados do banco para o Flutter
-        // IMPORTANTE: Agora estamos enviando a 'location' também
         res.json({
             message: 'Login realizado com sucesso!',
             user: {
@@ -57,7 +56,9 @@ app.post('/api/login', async (req, res) => {
                 full_name: user.full_name,
                 email: user.email,
                 role: user.role,
-                location: user.location // <-- Nova informação que vai para a Home
+                location: user.location,
+                latitude: user.latitude,   // <-- NOVA INFORMAÇÃO PARA O MAPA
+                longitude: user.longitude  // <-- NOVA INFORMAÇÃO PARA O MAPA
             }
         });
 
@@ -71,27 +72,24 @@ app.post('/api/login', async (req, res) => {
 // ROTA 3: Cadastro de Novos Usuários
 // ==========================================
 app.post('/api/register', async (req, res) => {
-    // Agora recebemos a 'location' que o usuário vai digitar na tela de cadastro
     const { full_name, email, password, role, location, city, latitude, longitude } = req.body;
 
     try {
-        // Primeiro, garantimos que não haja e-mails duplicados
         const checkUser = await db.query('SELECT * FROM users WHERE email = $1', [email]);
         if (checkUser.rows.length > 0) {
             return res.status(400).json({ error: 'Este e-mail já está cadastrado.' });
         }
 
-        // Insere o novo usuário, mapeando as 5 variáveis para os 5 campos do banco ($1 a $5)
         const insertQuery = `
              INSERT INTO users (full_name, email, password_hash, role, location, city, latitude, longitude)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id, full_name, email, role, location, city, latitude, longitude;
         `;
-        const newUser = await db.query(insertQuery, [full_name, email, password, role.toUpperCase(), location, city, latitude, longitude    ]);
+        const newUser = await db.query(insertQuery, [full_name, email, password, role.toUpperCase(), location, city, latitude, longitude]);
 
         res.status(201).json({
             message: 'Usuário cadastrado com sucesso!',
-            user: newUser.rows[0] // Devolve os dados criados como confirmação
+            user: newUser.rows[0]
         });
 
     } catch (error) {
@@ -125,7 +123,6 @@ app.get('/api/contracts/cafeicultor/:id', async (req, res) => {
 // ==========================================
 app.get('/api/beekeepers', async (req, res) => {
     try {
-        // Agora o SELECT puxa explicitamente as colunas city e state recém-criadas!
         const query = `
             SELECT id, full_name, latitude, longitude, total_colmeias, preco_por_colmeia, city, state 
             FROM users 
@@ -146,7 +143,6 @@ app.get('/api/contracts/apicultor/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Traz apenas as propostas PENDENTES para a tela inicial do apicultor
         const query = `
             SELECT c.id, c.status, u.full_name AS cafeicultor_nome
             FROM contracts c
@@ -169,7 +165,6 @@ app.put('/api/contracts/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
-        // Atualiza o status e "carimba" a hora da movimentação (updated_at)
         const query = 'UPDATE contracts SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
         const result = await db.query(query, [status, id]);
         res.json(result.rows[0]);
@@ -196,7 +191,7 @@ app.delete('/api/contracts/:id', async (req, res) => {
 });
 
 // ==========================================
-// ROTA 10: Buscar TODOS os contratos do Apicultor (ATUALIZADA)
+// ROTA 10: Buscar TODOS os contratos do Apicultor
 // ==========================================
 app.get('/api/contracts/apicultor/todos/:id', async (req, res) => {
     const { id } = req.params;
@@ -248,7 +243,6 @@ app.put('/api/users/:id/config', async (req, res) => {
 // NOVA ROTA 04: Criar um novo contrato
 // ==========================================
 app.post('/api/contracts', async (req, res) => {
-    console.log("CHEGOU NO BACKEND:", req.body); // <--- Isso vai aparecer no terminal!
     const { cafeicultor_id, apicultor_id, quantidade_colmeias, valor_total } = req.body;
 
     try {
@@ -273,8 +267,6 @@ app.post('/api/contracts', async (req, res) => {
 // ROTA 13: Criar Contrato com Valores
 // ==========================================
 app.post('/api/contratos/novo', async (req, res) => {
-    console.log("DADOS REAIS RECEBIDOS:", req.body);
-    
     const { cafeicultor_id, apicultor_id, quantidade_colmeias, valor_total } = req.body;
 
     try {
@@ -317,8 +309,6 @@ app.delete('/api/users/:id', async (req, res) => {
   const userId = req.params.id;
 
   try {
-    // 1º PASSO: Tenta apagar os logs convertendo ambos os IDs para texto (::text)
-    // Usamos um try/catch isolado. Se falhar, o servidor não trava e continua a apagar o resto!
     try {
       await db.query(`
         DELETE FROM productivity_logs 
@@ -330,19 +320,16 @@ app.delete('/api/users/:id', async (req, res) => {
       console.log('Aviso: Erro ignorado ao apagar productivity_logs:', logError.message);
     }
 
-    // 2º PASSO: Apagar os contratos
     await db.query(
       'DELETE FROM contracts WHERE cafeicultor_id = $1 OR apicultor_id = $1',
       [userId]
     );
 
-    // 3º PASSO: Apagar as propriedades
     await db.query(
       'DELETE FROM properties WHERE user_id = $1',
       [userId]
     );
 
-    // 4º PASSO: Finalmente, apagar o utilizador
     const result = await db.query(
       'DELETE FROM users WHERE id = $1',
       [userId]
@@ -356,7 +343,6 @@ app.delete('/api/users/:id', async (req, res) => {
     
   } catch (error) {
     console.error('Erro FATAL ao excluir conta:', error);
-    // DICA MÁGICA: Agora vamos mandar a mensagem de erro REAL do PostgreSQL para a tela do Flutter!
     res.status(500).json({ error: `Erro do Banco de Dados: ${error.message}` });
   }
 });
