@@ -11,9 +11,9 @@ const nodemailer = require('nodemailer');
 // Configuração do carteiro (Gmail)
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // true para a porta 465, false para outras portas
-    service: 'gmail',
+    port: 587,
+    secure: false, // Tem de ser 'false' para a porta 587
+    requireTLS: true, // Força a ligação a ser encriptada e segura
     auth: {
         user: 'beecoffeeconnect@gmail.com', // Coloque o Gmail que vai enviar as mensagens
         pass: 'rjwqrpsiwiiammsf' // Coloque a senha gerada (tudo junto, sem espaços)
