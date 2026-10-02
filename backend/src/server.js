@@ -10,6 +10,9 @@ const nodemailer = require('nodemailer');
 
 // Configuração do carteiro (Gmail)
 const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // true para a porta 465, false para outras portas
     service: 'gmail',
     auth: {
         user: 'beecoffeeconnect@gmail.com', // Coloque o Gmail que vai enviar as mensagens
