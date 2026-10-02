@@ -5,6 +5,18 @@ const db = require('./config/database');
 
 const app = express();
 
+
+const nodemailer = require('nodemailer');
+
+// Configuração do carteiro (Gmail)
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'beecoffeeconnect@gmail.com', // Coloque o Gmail que vai enviar as mensagens
+        pass: 'rjwqrpsiwiiammsf' // Coloque a senha gerada (tudo junto, sem espaços)
+    }
+});
+
 // Configurações padrão do servidor para aceitar JSON
 app.use(cors());
 app.use(express.json());
@@ -345,6 +357,72 @@ app.delete('/api/users/:id', async (req, res) => {
     console.error('Erro FATAL ao excluir conta:', error);
     res.status(500).json({ error: `Erro do Banco de Dados: ${error.message}` });
   }
+});
+
+// ==========================================
+// ROTA 16: Solicitar Código de Recuperação (Envio de E-mail)
+// ==========================================
+app.post('/api/recover-password/request', async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await db.query('SELECT id, full_name FROM users WHERE email = $1', [email]);
+        if (user.rows.length === 0) {
+            return res.status(404).json({ error: 'Este e-mail não está cadastrado.' });
+        }
+
+        // Gera um PIN de 6 dígitos e define validade de 15 minutos
+        const pin = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 15 * 60 * 1000); 
+
+        // Guarda no banco de dados
+        await db.query('UPDATE users SET reset_pin = $1, reset_pin_expires = $2 WHERE email = $3', [pin, expires, email]);
+
+        // Dispara o e-mail para o utilizador
+        await transporter.sendMail({
+            from: '"BeeCoffee Connect" <beecoffeeconnect@gmail.com>', // O SEU e-mail aqui novamente
+            to: email, // O e-mail que o utilizador digitou no aplicativo
+            subject: '🐝 O seu código de recuperação BeeCoffee',
+            html: `
+                <h2>Olá, ${user.rows[0].full_name.split(' ')[0]}!</h2>
+                <p>Recebemos um pedido para redefinir a sua senha no aplicativo BeeCoffee Connect.</p>
+                <p>O seu código de segurança é: <strong style="font-size: 24px; color: #E65100;">${pin}</strong></p>
+                <p><em>Este código expira em 15 minutos. Se não foi você quem pediu, ignore este e-mail.</em></p>
+            `
+        });
+
+        res.json({ message: 'Código enviado com sucesso!' });
+    } catch (error) {
+        console.error('Erro no envio de e-mail:', error);
+        res.status(500).json({ error: 'Erro ao enviar o e-mail de recuperação.' });
+    }
+});
+
+// ==========================================
+// ROTA 17: Validar Código e Alterar Senha
+// ==========================================
+app.post('/api/recover-password/reset', async (req, res) => {
+    const { email, pin, nova_senha } = req.body;
+
+    try {
+        const user = await db.query('SELECT reset_pin, reset_pin_expires FROM users WHERE email = $1', [email]);
+        
+        if (user.rows.length === 0) return res.status(404).json({ error: 'E-mail não encontrado.' });
+        
+        const dbUser = user.rows[0];
+
+        // Valida o PIN e a data de expiração
+        if (dbUser.reset_pin !== pin) return res.status(400).json({ error: 'Código de segurança inválido.' });
+        if (new Date() > new Date(dbUser.reset_pin_expires)) return res.status(400).json({ error: 'O código expirou. Solicite um novo.' });
+
+        // Altera a senha e apaga o PIN do banco para não ser reutilizado
+        await db.query('UPDATE users SET password_hash = $1, reset_pin = NULL, reset_pin_expires = NULL WHERE email = $2', [nova_senha, email]);
+        
+        res.json({ message: 'Senha alterada com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao redefinir:', error);
+        res.status(500).json({ error: 'Erro interno ao redefinir a senha.' });
+    }
 });
 
 // ==========================================
