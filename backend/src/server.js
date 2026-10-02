@@ -5,20 +5,12 @@ const db = require('./config/database');
 
 const app = express();
 
-
-const nodemailer = require('nodemailer');
-
-// Configuração do carteiro (Gmail)
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Tem de ser 'false' para a porta 587
-    requireTLS: true, // Força a ligação a ser encriptada e segura
-    auth: {
-        user: 'beecoffeeconnect@gmail.com', // Coloque o Gmail que vai enviar as mensagens
-        pass: 'rjwqrpsiwiiammsf' // Coloque a senha gerada (tudo junto, sem espaços)
-    }
-});
+// ==========================================
+// CONFIGURAÇÃO DO SENDGRID
+// ==========================================
+const sgMail = require('@sendgrid/mail');
+// Chave extraída com sucesso da sua imagem
+sgMail.setApiKey('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');
 
 // Configurações padrão do servidor para aceitar JSON
 app.use(cors());
@@ -363,7 +355,7 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // ==========================================
-// ROTA 16: Solicitar Código de Recuperação (Envio de E-mail)
+// ROTA 16: Solicitar Código de Recuperação (Envio via API SendGrid)
 // ==========================================
 app.post('/api/recover-password/request', async (req, res) => {
     const { email } = req.body;
@@ -381,22 +373,24 @@ app.post('/api/recover-password/request', async (req, res) => {
         // Guarda no banco de dados
         await db.query('UPDATE users SET reset_pin = $1, reset_pin_expires = $2 WHERE email = $3', [pin, expires, email]);
 
-        // Dispara o e-mail para o utilizador
-        await transporter.sendMail({
-            from: '"BeeCoffee Connect" <beecoffeeconnect@gmail.com>', // O SEU e-mail aqui novamente
-            to: email, // O e-mail que o utilizador digitou no aplicativo
+        // Dispara o e-mail pela API do SendGrid
+        const msg = {
+            to: email, // O e-mail que o utilizador digitou no telemóvel
+            from: 'beecoffeeconnect@gmail.com', // O seu remetente verificado
             subject: '🐝 O seu código de recuperação BeeCoffee',
             html: `
                 <h2>Olá, ${user.rows[0].full_name.split(' ')[0]}!</h2>
                 <p>Recebemos um pedido para redefinir a sua senha no aplicativo BeeCoffee Connect.</p>
                 <p>O seu código de segurança é: <strong style="font-size: 24px; color: #E65100;">${pin}</strong></p>
                 <p><em>Este código expira em 15 minutos. Se não foi você quem pediu, ignore este e-mail.</em></p>
-            `
-        });
+            `,
+        };
+
+        await sgMail.send(msg);
 
         res.json({ message: 'Código enviado com sucesso!' });
     } catch (error) {
-        console.error('Erro no envio de e-mail:', error);
+        console.error('Erro no envio de e-mail:', error.response ? error.response.body : error);
         res.status(500).json({ error: 'Erro ao enviar o e-mail de recuperação.' });
     }
 });
